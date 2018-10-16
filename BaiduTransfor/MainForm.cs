@@ -5,8 +5,12 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BDTranslateAPI;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace BaiduTransfor
 {
@@ -26,24 +30,30 @@ namespace BaiduTransfor
         {
             if (sender != null)
             {
-                TransApi api = new TransApi(APP_ID, SECURITY_KEY);
+                TransAPI api = new TransAPI(APP_ID, SECURITY_KEY);
                 string dest = (sender as Button).Text;
                 String query = tb_input.Text;
                 if (!string.IsNullOrWhiteSpace(query))
                 {
-                    String result = api.getTransResult(query, "auto", dest);
+                    String jsonResult = api.GetTransResult(query, "auto", dest);
+                    JObject jObject = (JObject) JsonConvert.DeserializeObject(jsonResult);
+                    jObject = (JObject) JsonConvert.DeserializeObject(
+                        jObject["trans_result"].ToString().TrimStart('[').TrimEnd(']'));
 
-                    int site = 0;
-                    String[] output = new String[9];
-                    for (int i = 0; i <= 8; i++)
-                    {
-                        int start = result.IndexOf("\"", site);
-                        site = start + 1;
-                        int end = result.IndexOf("\"", site);
-                        site = end + 1;
-                        output[i] = result.Substring(start + 1, end);
-                    }
-                    tb_output.Text = output[8];
+                    tb_output.Text = new Regex(@"\\u([0-9A-F]{4})", RegexOptions.IgnoreCase | RegexOptions.Compiled).Replace(
+                        jObject["dst"].ToString(), x => string.Empty + Convert.ToChar(Convert.ToUInt16(x.Result("$1"), 16)));
+
+                    //int site = 0;
+                    //String[] output = new String[9];
+                    //for (int i = 0; i <= 8; i++)
+                    //{
+                    //    int start = result.IndexOf("\"", site);
+                    //    site = start + 1;
+                    //    int end = result.IndexOf("\"", site);
+                    //    site = end + 1;
+                    //    output[i] = result.Substring(start + 1, end);
+                    //}
+                    //tb_output.Text = output[8];
                 }
             }
         }
